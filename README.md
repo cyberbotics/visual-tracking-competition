@@ -12,17 +12,12 @@
 - <https://github.com/cyberbotics/robot-programming-competition-disabled>
 - <https://github.com/cyberbotics/inverted-pendulum-competition-disabled>
 -->
-## Organizer Setup
-
-To organize your own competition, follow the instructions in the [ORGANIZER.md](ORGANIZER.md) file.
-
----
 
 ## Description
 
 <span id="description">
 
-Write here a short description of your competition.
+Program an Aibo robot to move its head to track a rubber duck moving in a scattered environment.
 
 </span>
 
@@ -32,10 +27,10 @@ Write here a short description of your competition.
 
 <span id="information">
 
-- Difficulty: Middle School, High School, Bachelor, Master or PhD
-- Robot: robot name
-- Language: programming language of the controller template
-- Commitment: amount of time needed to participate in the competition
+- Difficulty: PhD
+- Robot: AiboErs7
+- Language: Python
+- Commitment: A couple of days
 
 </span>
 

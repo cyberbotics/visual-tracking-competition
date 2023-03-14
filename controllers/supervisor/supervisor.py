@@ -1,37 +1,198 @@
-"""Supervisor of the Robot Programming Competition."""
+"""visual tracking benchmark supervisor controller.
+
+Manage the benchmark simulation execution and evaluate the performance
+of the robot controller.
+"""
 
 from controller import Supervisor
+import math
+import numpy as np
 import os
+import sys
 
-supervisor = Supervisor()
 
-timestep = int(supervisor.getBasicTimeStep())
+class MovingTarget():
+    """Class used to manage the move of the target object."""
 
-thymio = supervisor.getFromDef("COMPETITION_ROBOT")
-translation = thymio.getField("translation")
+    SPEED = 0.0005  # target object speed in meter/milliseconds
+    ROTATION_SPEED = 0.05  # target object speed in meter/milliseconds
 
-tx = 0
-ongoing_competition = True
-while supervisor.step(timestep) != -1 and ongoing_competition:
-    t = translation.getSFVec3f()
-    if ongoing_competition:
-        percent = 1 - abs(0.25 + t[0]) / 0.25
-        if percent < 0:
-            percent = 0
-        if t[0] < -0.01 and abs(t[0] - tx) < 0.0001:  # away from starting position and not moving any more
-            ongoing_competition = False
-            name = 'Robot Programming'
-            message = f'success:{name}:{percent}:{percent*100:.2f}%'
+    # File containing the target object trajectories.
+    TRAJECTORY_FILE = "target_trajectory.txt"
+    # Number of interpolated points used to define a trajectory.
+    TRAJECTORIES_POINTS = 6
+
+    def __init__(self, node):
+        """Default constructor.
+
+        node: target object node.
+        scale: scale value of the target object.
+        """
+        # Get fields.
+        self.node = node
+        self.translationField = self.node.getField('translation')
+        self.translation = self.translationField.getSFVec3f()
+
+        self.rotationField = self.node.getField('rotation')
+        self.rotationAngle = self.rotationField.getSFRotation()[3]
+        self.rotationStep = float('Inf')
+        self.rotationStepsCount = -1
+
+        # Compute the trajectory based on a random combination of independent
+        # trajectories written in a file.
+        # Read target object trajectory from file
+        # Line format: <position x>;<position z>\n
+        splitTrajectories = []
+        pointIndex = 0
+        with open(MovingTarget.TRAJECTORY_FILE) as f:
+            for line in f:
+                if line.startswith('#') or line.isspace():
+                    # Ignore comments.
+                    continue
+                if not splitTrajectories or pointIndex > MovingTarget.TRAJECTORIES_POINTS:
+                    # Begin a new trajectory.
+                    splitTrajectories.append([])
+                    pointIndex = 0
+                element = line.split(';')
+                splitTrajectories[-1].append([float(element[0]), float(element[1])])
+                pointIndex += 1
+
+        self.trajectory = []
+        trajectoriesCount = len(splitTrajectories)
+        # Given that the np.random.seed is not set, the permutations changes
+        # at each controller run.
+        permutation = np.random.permutation(trajectoriesCount)
+        for i in permutation:
+            for point in splitTrajectories[i]:
+                self.trajectory.append(point)
+
+        self.trajectoryStep = 0
+
+    def move(self, timestep):
+        """Move the target object.
+
+        The motion is based on the trajectory points stored in
+        "target_trajectory.txt". The points position are interpolated based on
+        the target motion speed to produce a smooth movement.
+        Return false if the complete trajectory is executed.
+        """
+        if self.trajectoryStep >= len(self.trajectory):
+            # return trajectory completed
+            return False
+
+        target2DPosition = self.trajectory[self.trajectoryStep]
+        vector = np.array([-target2DPosition[0] - self.translation[0],
+                           -target2DPosition[1] - self.translation[1],
+                           0.0])
+        distance = np.linalg.norm(vector)
+        maxStep = MovingTarget.SPEED * timestep
+
+        if distance < maxStep:
+            self.trajectoryStep += 1
+            self.translation = [a + b for a, b in zip(self.translation, vector)]
+            segmentChanged = True
         else:
-            message = f"percent:{percent}"
-        supervisor.wwiSendText(message)
-        tx = t[0]
+            if math.isinf(self.rotationStep):
+                self.rotationStepsCount = 10
+                newAngle = math.acos(np.dot(np.array([1.0, 0.0, 0.0]), vector) / distance)
+                if vector[1] < 0.01:
+                    newAngle = -newAngle
+                diff = self.rotationAngle - newAngle
+                while diff > math.pi:
+                    diff -= 2 * math.pi
+                while diff < -math.pi:
+                    diff += 2 * math.pi
+                self.rotationStep = -diff / self.rotationStepsCount
 
-print(f"Competition complete! Your performance was {message.split(':')[3]}")
+            factor = maxStep / distance
+            self.translation[0] += vector[0] * factor
+            self.translation[1] += vector[1] * factor
+            segmentChanged = False
 
+        self.translationField.setSFVec3f(self.translation)
+
+        if self.rotationStepsCount > 0:
+            if segmentChanged:
+                self.rotationAngle += self.rotationStep * \
+                    self.rotationStepsCount
+                self.rotationStepsCount = 0
+            else:
+                self.rotationAngle += self.rotationStep
+                self.rotationStepsCount -= 1
+            self.rotationField.setSFRotation([0.0, 0.0, 1.0,
+                                              self.rotationAngle])
+
+        if segmentChanged:
+            self.rotationStep = float('Inf')
+        return True
+
+    def hit(self, origin, sightVector, hitError):
+        """Return if the target object lies on the sight line.
+
+        The sight line is defined by the origin point and sightVector.
+        hitError specifies the difference errors in meters that can be
+        considered as an hit.
+        """
+        distance = [0, 0, 0]
+        for i in range(0, 3):
+            distance[i] = self.translation[i] - origin[i]
+        v1 = distance / np.linalg.norm(distance)
+        v2 = sightVector / np.linalg.norm(sightVector)
+        return abs(v1[0] - v2[0]) < hitError and \
+            abs(v1[1] - v2[1]) < hitError and abs(v1[2] - v2[2]) < hitError
+
+
+# Parse controller arguments.
+hitError = 0.1
+for arg in sys.argv:
+    if arg.startswith('hit-error='):
+        hitError = float(arg[len('hit-error='):])
+
+# Create the Supervisor instance.
+robot = Supervisor()
+
+# Get the time step of the current world.
+timestep = int(robot.getBasicTimeStep() * 4)
+robot.wwiSendText("setup:%.2f;%.2f" % (hitError, timestep))
+
+# Create instance of moving target object.
+target = MovingTarget(robot.getFromDef('TARGET'))
+
+robotHead = robot.getFromDef('HEAD_CAM')
+
+hitsCount = 0
+stepsCount = 0
+isRunning = True
+# Main loop:
+# perform simulation steps until Webots is stopping the controller or
+# the target object trajectory is completed.
+while robot.step(timestep) != -1 and isRunning:
+    # Evaluate the precision of the tracked object position by checking if the
+    # camera is looking at the target object direction.
+    # Camera local orientation is [0, 0 -1], thus the global orientation is
+    # R * [0, 0, -1], where R is the robot head global rotation matrix.
+    R = robotHead.getOrientation()
+    hitsCount += target.hit(robotHead.getPosition(), [-R[2], -R[5], -R[8]],
+                            hitError)
+    stepsCount += 1
+    robot.wwiSendText("hits:%d/%d" % (hitsCount, stepsCount))
+
+    # Update target object position:
+    # return if the whole trajectory has been completed.
+    isRunning = target.move(timestep)
+
+# Compute final grade and exit
+if stepsCount == 0:
+    hitRate = 0.0
+else:
+    hitRate = float(hitsCount) / stepsCount
+
+robot.wwiSendText("stop")
 # Performance output used by automated CI script
 CI = os.environ.get("CI")
 if CI:
-    print(f"performance:{percent}")
+    print(f"performance:{hitRate}")
+else:
+    print(f"Final hit rate: {hitRate:.2f}")
 
-supervisor.simulationSetMode(Supervisor.SIMULATION_MODE_PAUSE)
+robot.simulationSetMode(Supervisor.SIMULATION_MODE_PAUSE)

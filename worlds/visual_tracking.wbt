@@ -31,6 +31,7 @@ TexturedBackgroundLight {
 AiboErs7 {
   translation -2.2559382 1.0510903 0.14351524
   rotation 0.01708188509204869 -0.7223048238922644 -0.6913638337255336 -0.068192399
+  name "participant"
   controller "participant"
   window "pan_tilt_camera_view"
   synchronization FALSE

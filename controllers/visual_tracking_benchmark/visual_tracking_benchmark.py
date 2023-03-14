@@ -61,6 +61,7 @@ class MovingTarget():
         trajectoriesCount = len(splitTrajectories)
         # Given that the np.random.seed is not set, the permutations changes
         # at each controller run.
+        np.random.seed(0)
         permutation = np.random.permutation(trajectoriesCount)
         for i in permutation:
             for point in splitTrajectories[i]:

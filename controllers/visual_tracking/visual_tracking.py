@@ -9,13 +9,13 @@ import tempfile
 try:
     import numpy as np
 except ImportError:
-    sys.exit("Warning: 'numpy' module not found. Please check the Python modules installation instructions " +
-             "at 'https://www.cyberbotics.com/doc/guide/using-python'.")
+    sys.exit("Warning: 'numpy' module not found. Please check the Python modules installation instructions "
+             + "at 'https://www.cyberbotics.com/doc/guide/using-python'.")
 try:
     import cv2
 except ImportError:
-    sys.exit("Warning: 'cv2' module not found. Please check the Python modules installation instructions " +
-             "at 'https://www.cyberbotics.com/doc/guide/using-python'.")
+    sys.exit("Warning: 'cv2' module not found. Please check the Python modules installation instructions "
+             + "at 'https://www.cyberbotics.com/doc/guide/using-python'.")
 
 
 def cleanup():

@@ -11,19 +11,6 @@ import os
 import sys
 
 
-def normalize(v):
-    """Return normalized 3D vector v."""
-    det = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-    return [v[0] / det, v[1] / det, v[2] / det]
-
-
-def dotProduct(v1, v2):
-    """Compute the dot product of 3D vectors v1 and v2."""
-    n1 = normalize(v1)
-    n2 = normalize(v2)
-    return n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2]
-
-
 class MovingTarget():
     """Class used to manage the move of the target object."""
 
@@ -94,21 +81,20 @@ class MovingTarget():
             return False
 
         target2DPosition = self.trajectory[self.trajectoryStep]
-        vector = [-target2DPosition[0] - self.translation[0],
-                  -target2DPosition[1] - self.translation[1],
-                  0.0]
-        distance = math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]
-                             + vector[2] * vector[2])
+        vector = np.array([-target2DPosition[0] - self.translation[0],
+                           -target2DPosition[1] - self.translation[1],
+                           0.0])
+        distance = np.linalg.norm(vector)
         maxStep = MovingTarget.SPEED * timestep
 
         if distance < maxStep:
             self.trajectoryStep += 1
-            self.translation += vector
+            self.translation = [a + b for a, b in zip(self.translation, vector)]
             segmentChanged = True
         else:
             if math.isinf(self.rotationStep):
                 self.rotationStepsCount = 10
-                newAngle = math.acos(dotProduct([1.0, 0.0, 0.0], vector))
+                newAngle = math.acos(np.dot(np.array([1.0, 0.0, 0.0]), vector) / distance)
                 if vector[1] < 0.01:
                     newAngle = -newAngle
                 diff = self.rotationAngle - newAngle
@@ -150,8 +136,8 @@ class MovingTarget():
         distance = [0, 0, 0]
         for i in range(0, 3):
             distance[i] = self.translation[i] - origin[i]
-        v1 = normalize(distance)
-        v2 = normalize(sightVector)
+        v1 = distance / np.linalg.norm(distance)
+        v2 = sightVector / np.linalg.norm(sightVector)
         return abs(v1[0] - v2[0]) < hitError and \
             abs(v1[1] - v2[1]) < hitError and abs(v1[2] - v2[2]) < hitError
 

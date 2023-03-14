@@ -10,7 +10,7 @@ PROTO VisualTrackingBenchmark [
 ]
 {
 Robot {
-  controller "visual_tracking_benchmark"
+  controller "supervisor"
   controllerArgs IS controllerArgs
   supervisor TRUE
   window IS window

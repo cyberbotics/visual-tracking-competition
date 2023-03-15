@@ -26,7 +26,7 @@ Program an Aibo robot to move its head to track a rubber duck moving in a scatte
 <span id="information">
 
 - Difficulty: PhD
-- Robot: AiboErs7
+- Robot: Aibo ERS-7
 - Language: Python
 - Commitment: A couple of days
 

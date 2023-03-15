@@ -15,7 +15,7 @@ WorldInfo {
     "Benchmark objective: "
     "Program an Aibo robot to move its head to track a rubber duck moving in a scattered environment."
   ]
-  title "Visual Tracking"
+  title "Visual Tracking Competition"
   window "visual_tracking"
 }
 Viewpoint {

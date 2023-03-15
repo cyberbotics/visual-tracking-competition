@@ -1,6 +1,6 @@
 <span id="title">
 
-# Competition Organizer Template
+# Visual Tracking Competition
 
 </span>
 

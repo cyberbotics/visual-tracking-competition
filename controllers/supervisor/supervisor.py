@@ -187,12 +187,14 @@ if stepsCount == 0:
 else:
     hitRate = float(hitsCount) / stepsCount
 
-robot.wwiSendText("stop")
+robot.wwiSendText(f"stop:{hitRate*100:.2f}")
+
 # Performance output used by automated CI script
 CI = os.environ.get("CI")
 if CI:
     print(f"performance:{hitRate}")
 else:
-    print(f"Final hit rate: {hitRate:.2f}")
+    print(f"Final hit rate: {hitRate*100:.2f}%")
 
+robot.step(timestep)
 robot.simulationSetMode(Supervisor.SIMULATION_MODE_PAUSE)

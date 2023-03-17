@@ -34,31 +34,23 @@ window.robotWindow.receive = function(message, robot) {
     const setup = message.substr(6);
     const values = setup.split(';');
     document.getElementById('frame-step-display').innerHTML = values[1];
-  } else if (message === 'stop') {
-    if (typeof sendBenchmarkRecord === 'undefined' || !sendBenchmarkRecord(robot, this, benchmarkName, hitRate, metricToString)) {
-      document.getElementById('rate-display').style.color = 'red';
-      document.getElementById('hits-display').style.color = 'red';
-      document.getElementById('frames-display').style.color = 'red';
-    }
-  } else if (message.startsWith('record:OK:')) {
+  } else if (message.startsWith('stop:')) {
+    const benchmarkPerformance = message.substr(5);
+    document.getElementById('rate-display').innerText = benchmarkPerformance;
+    document.getElementById('rate-display').style.color = 'green';
     document.getElementById('rate-display').style.fontWeight = 'bold';
-    document.getElementById('hits-display').style.fontWeight = 'bold';
-    document.getElementById('frames-display').style.fontWeight = 'bold';
-    showBenchmarkRecord(message, benchmarkName, metricToString);
-  } else if (message.startsWith('record:Error:')) {
-    document.getElementById('rate-display').style.color = 'red';
-    document.getElementById('hits-display').style.color = 'red';
-    document.getElementById('frames-display').style.color = 'red';
-    showBenchmarkError(message, benchmarkName);
+    document.querySelector(".text").innerHTML = `
+      <h2>${benchmarkName} complete</h2>
+      <h3>Congratulations you finished the benchmark!</h3>
+      <p>Your current performance is: <b style="color:green;">${benchmarkPerformance}%</b></p>
+      <p>If you want to submit your controller to the leaderboard, follow the instructions given by the "Register" button on the benchmark page.</p>
+    `
+    toggleModal()
   } else
     console.log("Received unknown message for robot '" + robot + "': '" + message + "'");
 
   function zeroFilledInteger(x, width) {
     return (new Array(width).join('0') + x).substr(-width);
-  }
-
-  function metricToString(value) {
-    return (100 * value).toFixed(2) + '%';
   }
 };
 
